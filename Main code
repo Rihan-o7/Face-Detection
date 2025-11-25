@@ -1,0 +1,78 @@
+import sys
+import cv2
+import numpy as np
+
+try:
+    import dlib
+except Exception as e:
+    print("ERROR: failed to import dlib. Make sure dlib is installed and built correctly.")
+    print("Import error:", e)
+    sys.exit(1)
+
+# Connect to your computer's default camera
+cap = cv2.VideoCapture(0)
+
+# Check camera opened successfully
+if not cap.isOpened():
+    print("ERROR: Could not open webcam (cv2.VideoCapture(0) failed).")
+    print("If you're on Windows, try changing the device index (0 -> 1) or check camera permissions.")
+    sys.exit(1)
+
+# Detect the coordinates using dlib's HOG-based frontal face detector
+detector = dlib.get_frontal_face_detector()
+
+try:
+    # Capture frames continuously
+    while True:
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+
+        if not ret or frame is None:
+            # print a short warning and continue trying
+            print("Warning: frame capture failed, retrying...")
+            continue
+
+        # Flip the frame horizontally (mirror view)
+        frame = cv2.flip(frame, 1)
+
+        # RGB to grayscale (dlib detector expects single-channel image)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Detect faces (returns a list of rectangles)
+        faces = detector(gray)
+
+        # Iterator to count faces for this frame (reset every frame)
+        i = 0
+        for face in faces:
+            # Get the coordinates of faces
+            x, y = face.left(), face.top()
+            x1, y1 = face.right(), face.bottom()
+            cv2.rectangle(frame, (x, y), (x1, y1), (0, 255, 0), 2)
+
+            # Increment iterator for each face in faces
+            i += 1
+
+            # Display the box and faces label
+            label = f'face num {i}'
+            cv2.putText(frame, label, (max(x-10, 0), max(y-10, 0)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            # Optional: print face rectangle to console (can be noisy)
+            print(f"Detected face #{i}: left={x}, top={y}, right={x1}, bottom={y1}")
+
+        # Display the resulting frame
+        cv2.imshow('frame', frame)
+
+        # Quit when 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("Quit requested - exiting.")
+            break
+
+except KeyboardInterrupt:
+    # Allow Ctrl+C to exit cleanly
+    print("\nInterrupted by user (KeyboardInterrupt). Exiting...")
+
+finally:
+    # Release the capture and destroy the windows in all cases
+    cap.release()
+    cv2.destroyAllWindows()
+    print("Resources released.")
